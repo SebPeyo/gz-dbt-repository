@@ -5,13 +5,56 @@ sources:
     schema: gz_raw_data
     description: Greenweez dataset
     tables:
+
+      - name: sales
+        identifier: raw_gz_sales
+        description: sales of Greenweez / we have on row per product_id found in each orders_id
+        # Freshness testing
+        loaded_at_field: "CAST(date_date AS TIMESTAMP)"
+        freshness:
+          warn_after: {count: 90, period: day}
+        
+        columns:
+          - name: date_date
+            description: date_of_purchase
+          - name: orders_id
+            description: foreign key to ship
+          - name: pdt_id
+            description: foreign key to product
+          - name: revenue
+            description: turnover from the specific product (= quantity * unit selling price)
+          - name: quantity
+            description: quantity sold
+        tests:
+          - not_null:
+              column_name: "(orders_id || '-' || pdt_id)"
+          - unique:
+              column_name: "(orders_id || '-' || pdt_id)"
+
       - name: product
         identifier: raw_gz_product
         description: product table
-      - name: sales
-        identifier: raw_gz_sales
-        description: sales table
+        columns:
+          - name: products_id
+            description: primary key
+            tests:
+              - unique
+              - not_null
+          - name: purchase_price
+            description: unit purchase price per product
+
       - name: ship
         identifier: raw_gz_ship
         description: shipment info table
-
+        columns:
+          - name: orders_id
+            description: primary key
+            tests:
+              - unique
+              - not_null
+          - name: shipping_fee
+            description: the price the customer pays for shipping
+          - name: log_cost
+            description: the cost of preparing the parcel in the distribution centre/warehouse
+          - name: ship_cost
+            description: shipping cost paid by Greenweez to the carrier/logistics provider
