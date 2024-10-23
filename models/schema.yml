@@ -1,19 +1,18 @@
 version: 2
 
-sources: 
+sources:
   - name: raw
     schema: gz_raw_data
     description: Greenweez dataset
     tables:
-
       - name: sales
         identifier: raw_gz_sales
         description: sales of Greenweez / we have on row per product_id found in each orders_id
         # Freshness testing
         loaded_at_field: "CAST(date_date AS TIMESTAMP)"
         freshness:
-          warn_after: {count: 90, period: day}
-        
+          warn_after: { count: 90, period: day }
+
         columns:
           - name: date_date
             description: date_of_purchase
@@ -190,12 +189,12 @@ models:
         description: operational margin for the day (gross margin + shipping fee - log cost - ship cost)
         tests:
           - not_null
-      - name: purchase_cost 
+      - name: purchase_cost
         description: total purchase cost for the day
         tests:
           - not_null
       - name: shipping_fee
-        description:  total fee charged by Greenweez for the shipment of products
+        description: total fee charged by Greenweez for the shipment of products
         tests:
           - not_null
       - name: log_cost
@@ -203,7 +202,6 @@ models:
         tests:
           - not_null
       - name: nb_products_sold
-        description:  total number of products sold for the day
+        description: total number of products sold for the day
         tests:
           - not_null
-
