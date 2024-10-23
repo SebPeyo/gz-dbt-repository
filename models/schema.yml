@@ -1,0 +1,208 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: gz_raw_data
+    description: Greenweez dataset
+    tables:
+      - name: sales
+        identifier: raw_gz_sales
+        description: sales of Greenweez / we have on row per product_id found in each orders_id
+        # Freshness testing
+        loaded_at_field: "CAST(date_date AS TIMESTAMP)"
+        freshness:
+          warn_after: { count: 90, period: day }
+
+        columns:
+          - name: date_date
+            description: date_of_purchase
+          - name: orders_id
+            description: foreign key to ship
+          - name: pdt_id
+            description: foreign key to product
+          - name: revenue
+            description: turnover from the specific product (= quantity * unit selling price)
+          - name: quantity
+            description: quantity sold
+        tests:
+          - not_null:
+              column_name: "(orders_id || '-' || pdt_id)"
+          - unique:
+              column_name: "(orders_id || '-' || pdt_id)"
+
+      - name: product
+        identifier: raw_gz_product
+        description: product table
+        columns:
+          - name: products_id
+            description: primary key
+            tests:
+              - unique
+              - not_null
+          - name: purchase_price
+            description: unit purchase price per product
+
+      - name: ship
+        identifier: raw_gz_ship
+        description: shipment info table
+        columns:
+          - name: orders_id
+            description: primary key
+            tests:
+              - unique
+              - not_null
+          - name: shipping_fee
+            description: the price the customer pays for shipping
+          - name: log_cost
+            description: the cost of preparing the parcel in the distribution centre/warehouse
+          - name: ship_cost
+            description: shipping cost paid by Greenweez to the carrier/logistics provider
+
+models:
+    - name: int_sales_margin
+      description: joined raw sales and raw products to compute margin per product
+      columns:
+        - name: products_id
+          description: join key between the 2 tables
+          tests:
+            - not_null
+        - name: date_date
+          description: date of purchase
+          tests:
+            - not_null
+        - name: revenue
+          description: turnover generated per product (= quantity * unit price)
+          tests:
+            - not_null
+        - name: quantity
+          description: quantity of products sold
+          tests:
+            - not_null
+        - name: purchase_price
+          description: unit purchase price of the product
+          tests:
+            - not_null
+        - name: purchase_cost
+          description: total purchase price (= quantity * purchase_price)
+          tests:
+            - not_null
+        - name: margin
+          description: gross margin per product (= revenue - purchase_cost)
+          tests:
+            - not_null
+      tests:
+        - not_null:
+            column_name: "(orders_id || '-' || products_id)"
+        - unique:
+            column_name: "(orders_id || '-' || products_id)"
+    - name: int_orders_margin
+      description: Gross margin aggregated per order
+      columns:
+        - name: orders_id
+          description: Primary key
+          tests:
+            - unique
+            - not_null
+        - name: date_date
+          description: date where the order was placed
+          tests:
+            - not_null
+        - name: revenue
+          description: total revenue per order
+          tests:
+            - not_null
+        - name: quantity
+          description: total quantity of products ordered
+          tests:
+            - not_null
+        - name: purchase_cost
+          description: total cost of products ordered
+          tests:
+            - not_null
+        - name: margin
+          description: gross margin of the order ( = revenue - purchase_cost)
+          tests:
+            - not_null
+    - name: int_orders_operational
+      description: Joined table from ordes margin and ship to compute the operational margin per order
+      columns:
+        - name: orders_id
+          description: Primary key
+          tests:
+            - not_null
+            - unique
+        - name: date_date
+          description: date of order
+          tests:
+            - not_null
+        - name: operational_margin
+          description: operational margin for the order (= margin + shipping fees - logcost - ship cost)
+          tests:
+            - not_null
+        - name: revenue
+          description: total revenue per order
+          tests:
+            - not_null
+        - name: quantity
+          description: total quantity of products sold per order
+          tests:
+            - not_null
+        - name: purchase_cost
+          description: total purchase cost of the order
+          tests:
+            - not_null
+        - name: gross_margin
+          description: gross margin for the order
+          tests:
+            - not_null
+        - name: shipping fee
+          description: fee charged by Greenweez for the shipment of the order
+        - name: logcost
+          description: logistics cost for the order
+        - name: ship_cost
+          description: costs paid by Greenweez for the shipment of the orders
+          
+    - name: finance_days
+      description: Mart model to analyse daily margin
+      columns:
+        - name: date_date
+          description: Primary Key
+          tests:
+            - not_null
+            - unique
+        - name: nb_transactions
+          description: number of transactions for the day
+          tests:
+            - not_null
+        - name: revenue
+          description: total revenue for the day
+          tests:
+            - not_null
+        - name: average_basket
+          description: average revenue for the day
+          tests:
+            - not_null
+        - name: gross_margin
+          description: gross margin for the day (revenue - purchase cost)
+          tests:
+            - not_null
+        - name: operational_margin
+          description: operational margin for the day (gross margin + shipping fee - log cost - ship cost)
+          tests:
+            - not_null
+        - name: purchase_cost
+          description: total purchase cost for the day
+          tests:
+            - not_null
+        - name: shipping_fee
+          description: total fee charged by Greenweez for the shipment of products
+          tests:
+            - not_null
+        - name: log_cost
+          description: logistic costs for the day
+          tests:
+            - not_null
+        - name: nb_products_sold
+          description: total number of products sold for the day
+          tests:
+            - not_null
